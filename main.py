@@ -75,24 +75,43 @@ def koch_layer(points: list[Vector2D]) -> list[Vector2D]:
     new_points.append(points[-1])
     return new_points
 
+def draw(points: list[Vector2D], filename: str) -> None:
+    fig, ax = plt.subplots(figsize=(20, 20))
+    x, y = points_to_arrays(points)
+    ax.plot(x, y)
+    ax.set_aspect("equal", "box")
+    ax.axis("off")
+    plt.savefig(filename, bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
+
+def unit_polygon(sides: int) -> list[Vector2D]:
+    angle_step = 2 * pi / sides
+    points = [
+        Vector2D(cos(i * angle_step), sin(i * angle_step))
+        for i in range(sides)
+    ]
+    points.append(points[0])  # Close the polygon
+    return points
 
 def main():
-    koch = [
-        Vector2D(0, 0),
-        Vector2D(1, 0),
-        Vector2D(0.5, -ROOT_3_OVER_2),
-        Vector2D(0, 0),
-    ]
+    kochs = {
+        "triangle": unit_polygon(3),
+        "square": unit_polygon(4),
+        "pentagon": unit_polygon(5),
+        "hexagon": unit_polygon(6),
+        "heptagon": unit_polygon(7),
+        "octagon": unit_polygon(8),
+    }
 
-    for idx in range(5):
-        koch = koch_layer(koch)
+    for direction in ["normal", "reversed"]:
+        for name, points in kochs.items():
+            if direction == "reversed":
+                points = list(reversed(points))
 
-        fig, ax = plt.subplots(figsize=(20, 20))
-        x, y = points_to_arrays(koch)
-        ax.plot(x, y)
-        ax.set_aspect("equal", "box")
-        ax.axis("off")
-        plt.savefig(f"koch-{idx:03}.png", bbox_inches="tight", pad_inches=0)
+            print(f"Drawing {name} in {direction} direction")
+            for idx in range(5):
+                draw(points, f"koch-{name}-{direction}-{idx}.png")
+                points = koch_layer(points)
 
     print("Done!")
 
