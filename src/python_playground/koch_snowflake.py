@@ -114,7 +114,3 @@ def draw_kochs(images_dir: Path) -> None:
                 points = koch_layer(points)
 
     print("Done!")
-
-
-if __name__ == "__main__":
-    draw_kochs()
