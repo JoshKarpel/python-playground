@@ -1,7 +1,8 @@
-import typer
-from python_playground.koch_snowflake import draw_kochs
-
 from pathlib import Path
+
+import typer
+
+from python_playground.koch_snowflake import draw_kochs
 
 app = typer.Typer()
 

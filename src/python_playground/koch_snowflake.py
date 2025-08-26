@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from math import sin, cos, pi
-from more_itertools import windowed
-import matplotlib.pyplot as plt
+from math import cos, pi, sin
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+from more_itertools import windowed
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,10 +91,7 @@ def draw(points: list[Vector2D], filename: Path) -> None:
 
 def unit_polygon(sides: int) -> list[Vector2D]:
     angle_step = 2 * pi / sides
-    points = [
-        Vector2D(cos(i * angle_step), sin(i * angle_step)).rotate(pi / 2)
-        for i in range(sides)
-    ]
+    points = [Vector2D(cos(i * angle_step), sin(i * angle_step)).rotate(pi / 2) for i in range(sides)]
     points.append(points[0])  # Close the polygon
     return points
 

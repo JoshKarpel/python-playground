@@ -23,6 +23,35 @@ dev-dependencies = [
 [project.scripts]
 play = "python_playground.main:app"
 
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "I",   # https://beta.ruff.rs/docs/rules/#isort-i
+    "F",   # https://beta.ruff.rs/docs/rules/#pyflakes-f
+    "E",   # https://beta.ruff.rs/docs/rules/#error-e
+    "W",   # https://beta.ruff.rs/docs/rules/#warning-w
+    "T20", # https://beta.ruff.rs/docs/rules/#flake8-print-t20
+    "PIE", # https://beta.ruff.rs/docs/rules/#flake8-pie-pie
+    "PLC", # https://beta.ruff.rs/docs/rules/#convention-plc
+    "PLE", # https://beta.ruff.rs/docs/rules/#error-ple
+    "PLW", # https://beta.ruff.rs/docs/rules/#warning-plw
+    "PTH", # https://beta.ruff.rs/docs/rules/#flake8-use-pathlib-pth
+    "PGH", # https://beta.ruff.rs/docs/rules/#pygrep-hooks-pgh
+    "RUF", # https://beta.ruff.rs/docs/rules/#ruff-specific-rules-ruf
+]
+
+ignore = [
+    "E501",   # line length exceeds limit
+    "E741",   # ambiguous variable name
+    "T201",   # print
+    "T203",   # pprint
+    "F403",   # star imports, used for utilities
+    "F405",   # star imports, used for utilities
+    "RUF012", # pydantic allows mutable class attributes
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
