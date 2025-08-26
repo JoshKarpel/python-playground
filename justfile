@@ -1,9 +1,18 @@
 #!/usr/bin/env just --justfile
 
-default: main
+default: check
 
 watch cmd:
-    uvx watchfiles --verbosity warning 'just {{cmd}}' main.py
+    uvx watchfiles --verbosity warning 'just {{cmd}}' src/
 
-main:
-    uv run python main.py
+alias w := watch
+
+check:
+    git add -u
+    uv run pre-commit run
+    git add -u
+
+play SUBCOMMAND:
+    uv run play {{SUBCOMMAND}}
+
+alias p := play

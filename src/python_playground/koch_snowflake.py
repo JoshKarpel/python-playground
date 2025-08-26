@@ -83,7 +83,6 @@ def draw(points: list[Vector2D], filename: Path) -> None:
     ax.plot(x, y)
     ax.set_aspect("equal", "box")
     ax.axis("off")
-    filename.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(filename, bbox_inches="tight", pad_inches=0)
     plt.close(fig)
 
@@ -98,8 +97,8 @@ def unit_polygon(sides: int) -> list[Vector2D]:
     return points
 
 
-def main() -> None:
-    images_dir = Path(__file__).parent / "koch"
+def draw_kochs(images_dir: Path) -> None:
+    images_dir.mkdir(parents=True, exist_ok=True)
 
     for sides in range(3, 21):
         for direction in ["normal", "reversed"]:
@@ -119,4 +118,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    draw_kochs()
