@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from asyncio import sleep
 from dataclasses import dataclass
+from random import randint
 from typing import Self
 
 import numpy as np
@@ -24,7 +25,7 @@ WHITE = Color.from_name("white")
 BLACK = Color.from_name("black")
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class Conway:
     cells: Cells
 
@@ -64,8 +65,8 @@ class Conway:
                 [1, 0, 1],
                 [0, 1, 1],
             ],
-            dtype=dtype,
         )
+
         return type(self)(cells=new_cells)
 
     def step(self) -> Self:
@@ -136,7 +137,7 @@ def conway_ui() -> Div:
         elif event.key == "r":
             set_conway(Conway.random(width=w, height=h, density=0.3))
         elif event.key == "g":
-            set_conway(Conway.zeros(width=w, height=h).insert_glider(1, 10))
+            set_conway(Conway.zeros(width=w, height=h).insert_glider(randint(0, w - 3), randint(0, h - 3)))
 
     def step(conway: Conway) -> Conway:
         return conway.step()
