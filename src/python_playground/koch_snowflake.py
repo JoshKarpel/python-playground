@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import cos, pi, sin
+from math import cos, pi, sin, sqrt
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -43,7 +43,7 @@ class Vector2D:
         return Vector2D(-self.x, -self.y)
 
     def __abs__(self) -> float:
-        return (self.x**2 + self.y**2) ** 0.5
+        return sqrt(self.x**2 + self.y**2)
 
 
 def points_to_arrays(points: list[Vector2D]) -> tuple[list[float], list[float]]:
@@ -70,8 +70,10 @@ def expand_koch_segment(start: Vector2D, end: Vector2D) -> list[Vector2D]:
 
 
 def koch_layer(points: list[Vector2D]) -> list[Vector2D]:
-    new_points = []
+    new_points: list[Vector2D] = []
     for start, end in windowed(points, 2):
+        assert start is not None
+        assert end is not None
         new_points.append(start)
         segment = expand_koch_segment(start, end)
         new_points.extend(segment)

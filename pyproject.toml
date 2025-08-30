@@ -16,6 +16,7 @@ dependencies = [
 
 [tool.uv]
 dev-dependencies = [
+    "mypy>=1.17.1",
     "pre-commit>=4.3.0",
     "ruff>=0.12.10",
 ]
@@ -51,6 +52,16 @@ ignore = [
     "F405",   # star imports, used for utilities
     "RUF012", # pydantic allows mutable class attributes
 ]
+
+[tool.mypy]
+packages = "python_playground"
+
+strict = true
+
+show_error_context = true
+show_column_numbers = true
+show_error_code_links = false
+pretty = true
 
 [build-system]
 requires = ["hatchling"]

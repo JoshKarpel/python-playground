@@ -3,14 +3,12 @@
 default: check
 
 watch cmd:
-    uvx watchfiles --verbosity warning 'just {{cmd}}' src/
+    uvx watchfiles --verbosity warning 'just {{cmd}}' src/ pyproject.toml justfile
 
 alias w := watch
 
 check:
-    git add -u
-    uv run pre-commit run
-    git add -u
+    uv run mypy
 
 play SUBCOMMAND:
     uv run play {{SUBCOMMAND}}
