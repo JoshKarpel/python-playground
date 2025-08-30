@@ -7,7 +7,9 @@ from counterweight.app import app
 from python_playground.conway import conway_ui
 from python_playground.koch_snowflake import draw_kochs
 
-cli = typer.Typer()
+cli = typer.Typer(
+    no_args_is_help=True,
+)
 
 
 @cli.command()
@@ -18,6 +20,7 @@ def koch(output: Path = Path.cwd() / "outputs" / "koch") -> None:
 
 @cli.command()
 def conway() -> None:
+    """Run the Conway's Game of Life UI."""
     asyncio.run(app(conway_ui))
 
 
