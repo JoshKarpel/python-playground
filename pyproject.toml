@@ -8,9 +8,11 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "counterweight>=0.0.9",
     "matplotlib>=3.10.5",
     "more-itertools>=10.7.0",
     "numpy>=2.3.2",
+    "structlog>=25.4.0",
     "typer>=0.15.1",
 ]
 
@@ -22,7 +24,7 @@ dev-dependencies = [
 ]
 
 [project.scripts]
-play = "python_playground.main:app"
+play = "python_playground.main:cli"
 
 [tool.ruff]
 line-length = 120

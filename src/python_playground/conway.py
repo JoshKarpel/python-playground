@@ -1,39 +1,64 @@
 from __future__ import annotations
 
+from asyncio import sleep
 from dataclasses import dataclass
 from typing import Self
 
 import numpy as np
 import numpy.typing as npt
+from counterweight.components import component
+from counterweight.elements import Chunk, Div, Text
+from counterweight.events import KeyPressed
+from counterweight.hooks import use_effect, use_state
+from counterweight.keys import Key
+from counterweight.styles.utilities import *
+from more_itertools import grouper
+from structlog import get_logger
+
+logger = get_logger()
 
 dtype = np.uint8
 Cells = npt.NDArray[dtype]
 
+WHITE = Color.from_name("white")
+BLACK = Color.from_name("black")
+
 
 @dataclass(slots=True)
 class Conway:
-    width: int
-    height: int
     cells: Cells
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Conway):
+            return NotImplemented
+        return np.array_equal(self.cells, other.cells)
+
+    def __hash__(self) -> int:
+        return hash(self.cells.tobytes())
+
+    @property
+    def width(self) -> int:
+        return self.cells.shape[1]
+
+    @property
+    def height(self) -> int:
+        return self.cells.shape[0]
 
     @classmethod
     def zeros(cls, width: int, height: int) -> Self:
         return cls(
-            width=width,
-            height=height,
             cells=np.zeros((height, width), dtype=dtype),
         )
 
     @classmethod
-    def random(cls, density: float, width: int, height: int) -> Self:
+    def random(cls, width: int, height: int, density: float = 0.5) -> Self:
         return cls(
-            width=width,
-            height=height,
             cells=np.where(np.random.rand(height, width) <= density, 1, 0),
         )
 
-    def upsert_glider(self, x: int, y: int) -> None:
-        self.cells[y : y + 3, x : x + 3] = np.array(
+    def insert_glider(self, x: int, y: int) -> Self:
+        new_cells = self.cells.copy()
+        new_cells[y : y + 3, x : x + 3] = np.array(
             [
                 [0, 0, 1],
                 [1, 0, 1],
@@ -41,21 +66,112 @@ class Conway:
             ],
             dtype=dtype,
         )
+        return type(self)(cells=new_cells)
 
-    def step(self) -> None:
+    def step(self) -> Self:
         neighbors = sum(
             np.roll(np.roll(self.cells, dy, axis=0), dx, axis=1)
             for dx in (-1, 0, 1)
             for dy in (-1, 0, 1)
             if (dx != 0 or dy != 0)
         )
+
         is_on_and_has_2_or_3_neighbors = (self.cells == 1) & ((neighbors == 2) | (neighbors == 3))
         is_off_and_has_3_neighbors = (self.cells == 0) & (neighbors == 3)
-        self.cells = np.where(
+
+        new_cells = np.where(
             is_on_and_has_2_or_3_neighbors | is_off_and_has_3_neighbors,
             1,
             0,
         )
 
+        return type(self)(cells=new_cells)
+
     def print(self) -> None:
         print(self.cells)
+
+    def canvas(self) -> list[Chunk]:
+        return canvas(
+            width=self.width,
+            height=self.height,
+            cells={(x, y): WHITE for x in range(self.width) for y in range(self.height) if self.cells[y, x] == 1},
+        )
+
+
+def canvas(
+    width: int,
+    height: int,
+    cells: dict[tuple[int, int], Color],
+) -> list[Chunk]:
+    c: list[Chunk] = []
+    for y_top, y_bot in grouper(range(height), 2):
+        c.extend(
+            Chunk(
+                content="▀",
+                style=CellStyle(
+                    foreground=cells.get((x, y_top), BLACK),
+                    background=cells.get((x, y_bot), BLACK),
+                ),
+            )
+            for x in range(width)
+        )
+        c.append(Chunk.newline())
+    c.pop()  # strip off last newline
+    return c
+
+
+w, h = 60, 60
+
+
+@component
+def conway_ui() -> Div:
+    interval, set_interval = use_state(0.3)
+    conway, set_conway = use_state(lambda: Conway.random(width=w, height=h, density=0.3))
+
+    def on_key(event: KeyPressed) -> None:
+        if event.key == Key.Down:
+            set_interval(lambda n: max(0.1, n - 0.1))
+        elif event.key == Key.Up:
+            set_interval(lambda n: n + 0.1)
+        elif event.key == "r":
+            set_conway(Conway.random(width=w, height=h, density=0.3))
+        elif event.key == "g":
+            set_conway(Conway.zeros(width=w, height=h).insert_glider(1, 10))
+
+    def step(conway: Conway) -> Conway:
+        return conway.step()
+
+    async def tick() -> None:
+        while True:
+            await sleep(interval)
+            set_conway(step)
+
+    use_effect(tick, deps=(interval,))
+
+    return Div(
+        on_key=on_key,
+        style=col | align_children_center | justify_children_space_evenly | gap_children_2 | pad_1,
+        children=[
+            Div(
+                children=[
+                    Text(
+                        style=text_justify_center,
+                        content=[
+                            Chunk(content="Conway's Game of Life"),
+                            Chunk.newline(),
+                            Chunk.newline(),
+                            Chunk(content=f"Interval: {interval:.1f}s (Up/Down to change)"),
+                            Chunk.newline(),
+                            Chunk(content="Press 'r' for random, 'g' for glider"),
+                            Chunk.newline(),
+                            Chunk(content="Press Ctrl+C to exit"),
+                        ],
+                    )
+                ]
+            ),
+            Text(
+                style=border_heavy | border_slate_500,
+                content=conway.canvas(),
+            ),
+        ],
+    )

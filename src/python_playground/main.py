@@ -1,30 +1,25 @@
+import asyncio
 from pathlib import Path
 
 import typer
+from counterweight.app import app
 
-from python_playground.conway import Conway
+from python_playground.conway import conway_ui
 from python_playground.koch_snowflake import draw_kochs
 
-app = typer.Typer()
+cli = typer.Typer()
 
 
-@app.command()
+@cli.command()
 def koch(output: Path = Path.cwd() / "outputs" / "koch") -> None:
     """Run the Koch snowflake generation."""
     draw_kochs(output)
 
 
-@app.command()
+@cli.command()
 def conway() -> None:
-    conway = Conway.zeros(width=10, height=10)
-
-    conway.upsert_glider(1, 1)
-    conway.print()
-
-    for _ in range(4):
-        conway.step()
-        conway.print()
+    asyncio.run(app(conway_ui))
 
 
 if __name__ == "__main__":
-    app()
+    cli()
