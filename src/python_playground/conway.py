@@ -214,8 +214,8 @@ def conway_ui() -> Div:
         if paused:
             return
         while True:
-            await sleep(interval)
             set_conway(step)
+            await sleep(interval)
 
     use_effect(
         tick,
@@ -237,9 +237,17 @@ def conway_ui() -> Div:
                             Chunk(content="Conway's Game of Life"),
                             Chunk.newline(),
                             Chunk.newline(),
+                            Chunk(
+                                content=f"{'Paused' if paused else 'Running'}",
+                                style=CellStyle(foreground=Color.from_name("red"))
+                                if paused
+                                else CellStyle(foreground=Color.from_name("green")),
+                            ),
+                            Chunk(content=" (Space to toggle)"),
+                            Chunk.newline(),
                             Chunk(content=f"Interval: {interval:.1f}s (Up/Down to change)"),
                             Chunk.newline(),
-                            Chunk(content="Press 'r' for random, 'g' for glider"),
+                            Chunk(content="Press 'r' for random, 'g' for glider, 'G' for glider gun"),
                             Chunk.newline(),
                             Chunk(content="Press Ctrl+C to exit"),
                         ],
