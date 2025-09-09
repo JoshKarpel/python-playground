@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from datetime import timedelta
 from math import pi
 from pathlib import Path
+from random import choice, uniform
 
 import numpy as np
 
 tau = 2 * pi
-DECAY = 0.995
 
 
 def make_sound_zeros(duration: timedelta, sample_rate: float) -> np.ndarray:
@@ -23,14 +23,14 @@ def offset_index(offset: timedelta, sample_rate: float) -> int:
     return math.ceil(offset.total_seconds() * sample_rate)
 
 
-def karplus_strong(frequency: float, duration: timedelta, sample_rate: float) -> np.ndarray:
+def karplus_strong(frequency: float, duration: timedelta, sample_rate: float, decay: float) -> np.ndarray:
     buffer_len = math.ceil(sample_rate / frequency)
     buffer = deque(np.random.uniform(low=-0.5, high=0.5, size=buffer_len).tolist(), maxlen=buffer_len)
 
     samples = make_sound_zeros(duration, sample_rate)
     for idx in range(len(samples)):
         first, second = buffer[0], buffer[1]
-        new_last = DECAY * 0.5 * (first + second)
+        new_last = decay * 0.5 * (first + second)
 
         samples[idx] = first
 
@@ -73,7 +73,9 @@ class Samples:
             duration=duration,
         )
 
-    def add_karplus_strong(self, frequency: float, start: timedelta, amplitude: float = 1) -> None:
+    def add_karplus_strong(
+        self, frequency: float, start: timedelta, amplitude: float = 1, decay: float = 0.995
+    ) -> None:
         start_idx = offset_index(start, self.sample_rate)
         duration = self.duration - start
 
@@ -81,7 +83,9 @@ class Samples:
         slice = self.samples[start_idx:]
         slice[:] += (
             amplitude
-            * karplus_strong(frequency=frequency, duration=duration, sample_rate=self.sample_rate)[: len(slice)]
+            * karplus_strong(frequency=frequency, duration=duration, sample_rate=self.sample_rate, decay=decay)[
+                : len(slice)
+            ]
         )
 
     def write_wav(self, path: Path) -> None:
@@ -90,13 +94,19 @@ class Samples:
 
 def make_sound(path: Path) -> None:
     sample_rate = 44100  # Hz
-    duration = timedelta(seconds=6)
-    frequency = 220  # Hz
+
+    d = 20
+    duration = timedelta(seconds=d + 1)
+    freqs = [440, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99]  # A4 to G5
 
     samples = Samples.zeros(duration=duration, sample_rate=sample_rate)
 
-    for n in range(5):
-        samples.add_karplus_strong(frequency=(n + 1) * frequency, start=timedelta(seconds=n), amplitude=0.8**n)
-        samples.add_karplus_strong(frequency=(n + 2) * frequency, start=timedelta(seconds=n), amplitude=0.5 * (0.8**n))
+    for n in range(d):
+        samples.add_karplus_strong(
+            frequency=choice(freqs), start=timedelta(seconds=n + uniform(-0.25, 0.25)), decay=0.998
+        )
+        samples.add_karplus_strong(
+            frequency=choice(freqs), start=timedelta(seconds=n + uniform(-0.25, 0.25)), decay=0.998
+        )
 
     samples.write_wav(path)
