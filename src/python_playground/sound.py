@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import wave
 from collections import deque
+from dataclasses import dataclass
 from datetime import timedelta
 from math import pi
 from pathlib import Path
@@ -13,14 +14,21 @@ tau = 2 * pi
 DECAY = 0.995
 
 
-def karplus_strong(frequency: float, duration: timedelta, sample_rate: float) -> np.ndarray:
+def make_sound_zeros(duration: timedelta, sample_rate: float) -> np.ndarray:
     num_samples = math.ceil(sample_rate * duration.total_seconds())
-    buffer_len = math.ceil(sample_rate / frequency)
-    print(num_samples, buffer_len)
-    buffer = deque(np.random.uniform(low=-0.5, high=0.5, size=num_samples).tolist(), maxlen=buffer_len)
-    samples = np.zeros(num_samples, dtype=np.float32)
+    return np.zeros(num_samples, dtype=np.float32)
 
-    for idx in range(num_samples):
+
+def offset_index(offset: timedelta, sample_rate: float) -> int:
+    return math.ceil(offset.total_seconds() * sample_rate)
+
+
+def karplus_strong(frequency: float, duration: timedelta, sample_rate: float) -> np.ndarray:
+    buffer_len = math.ceil(sample_rate / frequency)
+    buffer = deque(np.random.uniform(low=-0.5, high=0.5, size=buffer_len).tolist(), maxlen=buffer_len)
+
+    samples = make_sound_zeros(duration, sample_rate)
+    for idx in range(len(samples)):
         first, second = buffer[0], buffer[1]
         new_last = DECAY * 0.5 * (first + second)
 
@@ -51,11 +59,44 @@ def write_wav_from_samples(path: Path, samples: np.ndarray, sample_rate: int) ->
         f.writeframes(to_int16(samples).tobytes())
 
 
+@dataclass(slots=True)
+class Samples:
+    samples: np.ndarray
+    sample_rate: int
+    duration: timedelta
+
+    @classmethod
+    def zeros(cls, duration: timedelta, sample_rate: int) -> Samples:
+        return cls(
+            samples=make_sound_zeros(duration=duration, sample_rate=sample_rate),
+            sample_rate=sample_rate,
+            duration=duration,
+        )
+
+    def add_karplus_strong(self, frequency: float, start: timedelta, amplitude: float = 1) -> None:
+        start_idx = offset_index(start, self.sample_rate)
+        duration = self.duration - start
+
+        # Some trickery to avoid off-by-one errors
+        slice = self.samples[start_idx:]
+        slice[:] += (
+            amplitude
+            * karplus_strong(frequency=frequency, duration=duration, sample_rate=self.sample_rate)[: len(slice)]
+        )
+
+    def write_wav(self, path: Path) -> None:
+        write_wav_from_samples(path, self.samples, self.sample_rate)
+
+
 def make_sound(path: Path) -> None:
     sample_rate = 44100  # Hz
-    duration = timedelta(seconds=3)
+    duration = timedelta(seconds=6)
     frequency = 220  # Hz
 
-    samples = karplus_strong(frequency, duration, sample_rate)
+    samples = Samples.zeros(duration=duration, sample_rate=sample_rate)
 
-    write_wav_from_samples(path, samples, sample_rate)
+    for n in range(5):
+        samples.add_karplus_strong(frequency=(n + 1) * frequency, start=timedelta(seconds=n), amplitude=0.8**n)
+        samples.add_karplus_strong(frequency=(n + 2) * frequency, start=timedelta(seconds=n), amplitude=0.5 * (0.8**n))
+
+    samples.write_wav(path)
