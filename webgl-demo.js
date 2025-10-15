@@ -3,17 +3,25 @@
 // Vertex shader program
 const vsSource = `
     attribute vec4 aVertexPosition;
+    attribute vec4 aVertexColor;
+
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
+
+    varying lowp vec4 vColor;
+
     void main() {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+      vColor = aVertexColor;
     }
   `;
 
 // Fragment shader program
 const fsSource = `
+    varying lowp vec4 vColor;
+
     void main() {
-      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+      gl_FragColor = vColor;
     }
   `;
 
@@ -38,6 +46,7 @@ function main() {
         program: shaderProgram,
         attribLocations: {
             vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
+            vertexColor: gl.getAttribLocation(shaderProgram, "aVertexColor"),
         },
         uniformLocations: {
             projectionMatrix: gl.getUniformLocation(shaderProgram, "uProjectionMatrix"),
@@ -47,8 +56,21 @@ function main() {
 
     const buffers = initBuffers(gl);
 
-    // Draw the scene
-    drawScene(gl, programInfo, buffers);
+    let then = 0;
+    let squareRotation = 0.0;
+
+    function render(now) {
+        now *= 0.001;
+        const delta = now - then;
+        then = now;
+
+        drawScene(gl, programInfo, buffers, now);
+        squareRotation += delta;
+
+        requestAnimationFrame(render);
+    }
+
+    requestAnimationFrame(render);
 }
 
 
@@ -103,9 +125,11 @@ function loadShader(gl, type, source) {
 
 function initBuffers(gl) {
     const positionBuffer = initPositionBuffer(gl);
+    const colorBuffer = initColorBuffer(gl);
 
     return {
         position: positionBuffer,
+        color: colorBuffer,
     };
 }
 
@@ -128,7 +152,7 @@ function initPositionBuffer(gl) {
     return positionBuffer;
 }
 
-function drawScene(gl, programInfo, buffers) {
+function drawScene(gl, programInfo, buffers, squareRotation) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0); // Clear to black, fully opaque
     gl.clearDepth(1.0); // Clear everything
     gl.enable(gl.DEPTH_TEST); // Enable depth testing
@@ -166,10 +190,17 @@ function drawScene(gl, programInfo, buffers) {
         modelViewMatrix, // matrix to translate
         [-0.0, 0.0, -6.0],
     ); // amount to translate
+    mat4.rotate(
+        modelViewMatrix,
+        modelViewMatrix,
+        squareRotation,
+        [0, 0, 1],
+    )
 
     // Tell WebGL how to pull out the positions from the position
     // buffer into the vertexPosition attribute.
     setPositionAttribute(gl, buffers, programInfo);
+    setColorAttribute(gl, buffers, programInfo);
 
     // Tell WebGL to use our program when drawing
     gl.useProgram(programInfo.program);
@@ -212,6 +243,53 @@ function setPositionAttribute(gl, buffers, programInfo) {
         offset,
     );
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+}
+
+function initColorBuffer(gl) {
+    const colors = [
+        1.0,
+        1.0,
+        1.0,
+        1.0, // white
+        1.0,
+        0.0,
+        0.0,
+        1.0, // red
+        0.0,
+        1.0,
+        0.0,
+        1.0, // green
+        0.0,
+        0.0,
+        1.0,
+        1.0, // blue
+    ];
+
+    const colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+    return colorBuffer;
+}
+
+// Tell WebGL how to pull out the colors from the color buffer
+// into the vertexColor attribute.
+function setColorAttribute(gl, buffers, programInfo) {
+    const numComponents = 4;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+    gl.vertexAttribPointer(
+        programInfo.attribLocations.vertexColor,
+        numComponents,
+        type,
+        normalize,
+        stride,
+        offset,
+    );
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
 }
 
 main();
