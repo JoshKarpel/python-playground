@@ -57,7 +57,7 @@ function main() {
     const buffers = initBuffers(gl);
 
     let then = 0;
-    let squareRotation = 0.0;
+    let rotation = 0.0;
 
     function render(now) {
         now *= 0.001;
@@ -65,7 +65,7 @@ function main() {
         then = now;
 
         drawScene(gl, programInfo, buffers, now);
-        squareRotation += delta;
+        rotation += delta;
 
         requestAnimationFrame(render);
     }
@@ -126,10 +126,12 @@ function loadShader(gl, type, source) {
 function initBuffers(gl) {
     const positionBuffer = initPositionBuffer(gl);
     const colorBuffer = initColorBuffer(gl);
+    const indexBuffer = initIndexBuffer(gl);
 
     return {
         position: positionBuffer,
         color: colorBuffer,
+        indices: indexBuffer,
     };
 }
 
@@ -141,8 +143,25 @@ function initPositionBuffer(gl) {
     // operations to from here out.
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
-    // Now create an array of positions for the square.
-    const positions = [1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0];
+    const positions = [
+        // Front face
+        -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0,
+
+        // Back face
+        -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0,
+
+        // Top face
+        -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
+
+        // Bottom face
+        -1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0,
+
+        // Right face
+        1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0,
+
+        // Left face
+        -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0,
+    ];
 
     // Now pass the list of positions into WebGL to build the
     // shape. We do this by creating a Float32Array from the
@@ -152,7 +171,7 @@ function initPositionBuffer(gl) {
     return positionBuffer;
 }
 
-function drawScene(gl, programInfo, buffers, squareRotation) {
+function drawScene(gl, programInfo, buffers, rotation) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0); // Clear to black, fully opaque
     gl.clearDepth(1.0); // Clear everything
     gl.enable(gl.DEPTH_TEST); // Enable depth testing
@@ -193,14 +212,28 @@ function drawScene(gl, programInfo, buffers, squareRotation) {
     mat4.rotate(
         modelViewMatrix,
         modelViewMatrix,
-        squareRotation,
+        rotation,
         [0, 0, 1],
+    )
+    mat4.rotate(
+        modelViewMatrix,
+        modelViewMatrix,
+        rotation * 0.7,
+        [0, 1, 0],
+    )
+    mat4.rotate(
+        modelViewMatrix,
+        modelViewMatrix,
+        rotation * 0.3,
+        [1, 0, 0],
     )
 
     // Tell WebGL how to pull out the positions from the position
     // buffer into the vertexPosition attribute.
     setPositionAttribute(gl, buffers, programInfo);
     setColorAttribute(gl, buffers, programInfo);
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
     // Tell WebGL to use our program when drawing
     gl.useProgram(programInfo.program);
@@ -218,16 +251,17 @@ function drawScene(gl, programInfo, buffers, squareRotation) {
     );
 
     {
+        const vertexCount = 36;
+        const type = gl.UNSIGNED_SHORT;
         const offset = 0;
-        const vertexCount = 4;
-        gl.drawArrays(gl.TRIANGLE_STRIP, offset, vertexCount);
+        gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
     }
 }
 
 // Tell WebGL how to pull out the positions from the position
 // buffer into the vertexPosition attribute.
 function setPositionAttribute(gl, buffers, programInfo) {
-    const numComponents = 2; // pull out 2 values per iteration
+    const numComponents = 3; // pull out 2 values per iteration
     const type = gl.FLOAT; // the data in the buffer is 32bit floats
     const normalize = false; // don't normalize
     const stride = 0; // how many bytes to get from one set of values to the next
@@ -246,24 +280,23 @@ function setPositionAttribute(gl, buffers, programInfo) {
 }
 
 function initColorBuffer(gl) {
-    const colors = [
-        1.0,
-        1.0,
-        1.0,
-        1.0, // white
-        1.0,
-        0.0,
-        0.0,
-        1.0, // red
-        0.0,
-        1.0,
-        0.0,
-        1.0, // green
-        0.0,
-        0.0,
-        1.0,
-        1.0, // blue
+    const faceColors = [
+        [1.0, 1.0, 1.0, 1.0], // Front face: white
+        [1.0, 0.0, 0.0, 1.0], // Back face: red
+        [0.0, 1.0, 0.0, 1.0], // Top face: green
+        [0.0, 0.0, 1.0, 1.0], // Bottom face: blue
+        [1.0, 1.0, 0.0, 1.0], // Right face: yellow
+        [1.0, 0.0, 1.0, 1.0], // Left face: purple
     ];
+
+    // Convert the array of colors into a table for all the vertices.
+
+    let colors = [];
+
+    for (const c of faceColors) {
+        // Repeat each color four times for the four vertices of the face
+        colors = colors.concat(c, c, c, c);
+    }
 
     const colorBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
@@ -290,6 +323,35 @@ function setColorAttribute(gl, buffers, programInfo) {
         offset,
     );
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
+}
+
+function initIndexBuffer(gl) {
+    const indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+    // This array defines each face as two triangles, using the
+    // indices into the vertex array to specify each triangle's
+    // position.
+
+    // prettier-ignore
+    const indices = [
+        0, 1, 2, 0, 2, 3,    // front
+        4, 5, 6, 4, 6, 7,    // back
+        8, 9, 10, 8, 10, 11,   // top
+        12, 13, 14, 12, 14, 15,   // bottom
+        16, 17, 18, 16, 18, 19,   // right
+        20, 21, 22, 20, 22, 23,   // left
+    ];
+
+    // Now send the element array to GL
+
+    gl.bufferData(
+        gl.ELEMENT_ARRAY_BUFFER,
+        new Uint16Array(indices),
+        gl.STATIC_DRAW,
+    );
+
+    return indexBuffer;
 }
 
 main();
